@@ -18,8 +18,13 @@ actual fun MapView(modifier: Modifier, state: SpeedInfo, viewModel: SpeedViewMod
     val isLive = viewModel.isLiveMode.value
 
     LaunchedEffect(state.latitude, state.longitude) {
-        if (isLive) {
-            cameraPositionState.position = CameraPosition.fromLatLngZoom(currentPos, 15f)
+        if (isLive && state.latitude != 0.0 && state.longitude != 0.0) {
+            cameraPositionState.move(
+                com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
+                    currentPos, 
+                    cameraPositionState.position.zoom
+                )
+            )
         }
     }
 
