@@ -7,37 +7,40 @@ POCO X7 (Android) 向けに最適化された、高精度・低遅延のGPSス�
 
 ## 主な機能
 - **リアルタイム速度表示**: 小数点第1位まで表示されるキビキビとした速度計。
-- **自動計測**: アプリ起動と同時にGPS計測を自動開始。
+- **自動計測**: アプリ起動と同時にGPS計測を自動開始。有効なGPS信号を検知してから記録を開始するインテリジェントな始動ロジック。
+- **インテリジェント地図追従**: 手動で地図を操作すると自動追従が解除され、15秒間操作がないか、再開ボタンを押すと再び現在地を追従します。
 - **地図表示**: Google Maps上へのリアルタイムな現在地および軌跡の描画。
 - **履歴管理**: カレンダーから過去の走行データを選択し、地図上に再現。
 - **GPXエクスポート**: 走行ログをGPX形式で出力し、PC等へ共有。
-- **スリープ防止**: 鍵アイコンのトグルにより、計測中の画面消灯を防止。
+- **全自動スリープ防止**: アプリ使用中は、ユーザーの操作なしで常に画面消灯を防止します。
 - **速度補完**: 加速度センサーを用いた、GPSロスト時の速度推定機能。
 
 ## 使用方法
 1. アプリを起動すると位置情報の許可を求められるので「許可」します。
 2. 起動と同時に速度計測が始まります。
-3. 画面下部の「PAUSE」で一時停止、「RESUME」で再開、「STOP」で記録を保存します。
-4. 鍵アイコンをタップすると、画面が常時点灯（緑色）になります。
+3. 画面下部のステータスボタンで記録を制御します。
+    - **GPS Logging...**: 記録中。赤い円がアニメーションします。タップすると記録を一時停止します。
+    - **Logging Stopped**: 一時停止中。黒い四角が表示されます。タップすると記録を再開します。
+4. 地図を自由に動かして周辺を確認できます。右下のボタン、または15秒の経過で自動追従に戻ります。
 5. カレンダーアイコンから日付を選択すると、その日の軌跡を地図で確認・共有できます。
 
 ## ファイル構成とサマリー
 
 ### Common Main (共通ロジック)
-- **App.kt**: メインUI（Scaffold, 速度表示, 各種ボタン）の実装。
-- **SpeedViewModel.kt**: UIの状態管理、計測の自動開始、DB保存・読み込みの制御。
-- **TripRepository.kt**: SQLiteとの通信、GPX変換、ワープ除去フィルターロジック。
-- **SpeedInfo.kt**: リアルタイム走行データのモデル（速度、座標リスト等）。
+- **App.kt**: メインUIの実装。録画ステータスに応じた動的なボタン演出と速度表示。
+- **SpeedViewModel.kt**: UIの状態管理、有効な信号源に基づく計測開始の判断、DB制御。
+- **TripRepository.kt**: SQLiteとの通信、GPX変換、堅牢な単方向ワープ除去フィルター。
+- **SpeedInfo.kt**: リアルタイム走行データのモデル（速度、座標、精度、Provider等）。
 - **LocationService.kt**: プラットフォーム共通の位置情報インターフェース。
 - **MapView.kt (expect)**: プラットフォーム別の地図表示の定義。
 - **DatabaseDriverFactory.kt (expect)**: プラットフォーム別のDBドライバー定義。
 - **Trip.sq**: SQLDelightによるデータベーススキーマとクエリ定義。
 
 ### Android Main (Android専用実装)
-- **MainActivity.kt**: アプリの起動、パーミッション要求、ViewModelの初期化。
+- **MainActivity.kt**: アプリ起動処理、権限要求、全自動スリープ防止（FLAG_KEEP_SCREEN_ON）の設定。
 - **AndroidLocationService.kt**: Fused Location Providerと加速度センサーによる実際の計測処理。
-- **MapView.kt (actual)**: Google Maps SDK for Androidを用いた地図表示の具体的な実装。
-- **DatabaseDriverFactory.kt (actual)**: Android上でのSQLiteデータベース生成処理。
+- **MapView.kt (actual)**: Google Maps SDKを用いた地図表示。手動操作検知と15秒タイマーによる追従制御。
+- **DatabaseDriverFactory.kt (actual)**: Android上でのSQLiteデータベース生成。
 - **ShareUtils.kt**: FileProviderを使用したGPXファイルの外部共有。
 - **AndroidManifest.xml**: 権限、サービス、APIキーの設定。
 
