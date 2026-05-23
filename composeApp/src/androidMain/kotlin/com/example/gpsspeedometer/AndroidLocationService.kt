@@ -23,6 +23,7 @@ class AndroidLocationService(private val context: Context) : LocationService, Se
 
     private var currentSpeedMs = 0.0
     private var lastLocationTime = 0L
+    private var startRealtime = 0L
 
     init {
         val accel = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
@@ -53,11 +54,14 @@ class AndroidLocationService(private val context: Context) : LocationService, Se
             lastLocationTime = SystemClock.elapsedRealtime()
             currentSpeedMs = if (location.hasSpeed()) location.speed.toDouble() else 0.0
             
+            val offset = if (startRealtime > 0) (lastLocationTime - startRealtime) / 10 else 0L
+
             _speedInfo.value = SpeedInfo(
                 speedKmh = currentSpeedMs * 3.6,
                 speedMph = currentSpeedMs * 2.23694,
                 latitude = location.latitude,
                 longitude = location.longitude,
+                timeOffset = offset,
                 accuracy = location.accuracy,
                 provider = location.provider ?: "unknown",
                 pathPoints = emptyList(),
@@ -68,6 +72,7 @@ class AndroidLocationService(private val context: Context) : LocationService, Se
 
     @SuppressLint("MissingPermission")
     override fun startTracking() {
+        startRealtime = SystemClock.elapsedRealtime()
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000).build()
         fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
     }
