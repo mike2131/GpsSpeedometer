@@ -19,12 +19,10 @@ import kotlinx.datetime.*
 fun App(
     viewModel: SpeedViewModel, 
     repository: TripRepository,
-    onKeepScreenOnToggle: (Boolean) -> Unit, 
     onShareGpx: (String, String) -> Unit
 ) {
     val state = viewModel.uiState.value
     var showHistoryDialog by remember { mutableStateOf(false) }
-    var isKeepScreenOn by remember { mutableStateOf(false) }
 
     MaterialTheme(colorScheme = darkColorScheme(background = Color.Black)) {
         Scaffold(
@@ -66,20 +64,9 @@ fun App(
                 BottomAppBar(containerColor = Color.Black) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = {
-                            isKeepScreenOn = !isKeepScreenOn
-                            onKeepScreenOnToggle(isKeepScreenOn)
-                        }) {
-                            Icon(
-                                if (isKeepScreenOn) Icons.Default.Lock else Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = if (isKeepScreenOn) Color(0xFF00FF00) else Color.Gray
-                            )
-                        }
-                        
                         Button(
                             onClick = { viewModel.togglePause() },
                             colors = ButtonDefaults.buttonColors(

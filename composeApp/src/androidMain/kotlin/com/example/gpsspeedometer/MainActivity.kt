@@ -31,17 +31,12 @@ class MainActivity : ComponentActivity() {
         val locationService = AndroidLocationService(applicationContext)
         val viewModel = SpeedViewModel(locationService, repository)
 
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         setContent {
             App(
                 viewModel = viewModel,
                 repository = repository,
-                onKeepScreenOnToggle = { enabled ->
-                    if (enabled) {
-                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                    } else {
-                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                    }
-                },
                 onShareGpx = { gpx, filename ->
                     ShareUtils.shareGpx(this, gpx, filename)
                 }
