@@ -58,7 +58,9 @@ class AndroidLocationService(private val context: Context) : LocationService, Se
                 speedMph = currentSpeedMs * 2.23694,
                 latitude = location.latitude,
                 longitude = location.longitude,
-                pathPoints = _speedInfo.value.pathPoints + LatLng(location.latitude, location.longitude),
+                accuracy = location.accuracy,
+                provider = location.provider ?: "unknown",
+                pathPoints = emptyList(),
                 isEstimated = false
             )
         }

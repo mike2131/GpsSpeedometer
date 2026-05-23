@@ -41,10 +41,26 @@ class SpeedViewModel(
 
     init {
         startTracking()
-        locationService.speedInfo.onEach {
-            if (_isPaused.value) return@onEach
-            _uiState.value = it
-            if (it.speedKmh > maxSpeed) maxSpeed = it.speedKmh
+        locationService.speedInfo.onEach { info ->
+            if (info.provider == "" || info.provider == "unknown") return@onEach
+            if (info.latitude == 0.0 && info.longitude == 0.0) return@onEach
+
+            val currentPoints = if (_isPaused.value) {
+                _uiState.value.pathPoints
+            } else {
+                _uiState.value.pathPoints + LatLng(
+                    latitude = info.latitude, 
+                    longitude = info.longitude,
+                    accuracy = info.accuracy,
+                    provider = info.provider
+                )
+            }
+
+            if (!_isPaused.value && info.speedKmh > maxSpeed) {
+                maxSpeed = info.speedKmh
+            }
+
+            _uiState.value = info.copy(pathPoints = currentPoints)
         }.launchIn(viewModelScope)
     }
 
