@@ -9,10 +9,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.datetime.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.alpha
+import androidx.compose.animation.core.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,6 +27,24 @@ fun App(
 ) {
     val state = viewModel.uiState.value
     var showHistoryDialog by remember { mutableStateOf(false) }
+
+    val infiniteTransition = rememberInfiniteTransition()
+    val glowScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        )
+    )
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        )
+    )
 
     MaterialTheme(colorScheme = darkColorScheme(background = Color.Black)) {
         Scaffold(
@@ -67,18 +89,38 @@ fun App(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val isPaused = viewModel.isPaused.value
                         Button(
                             onClick = { viewModel.togglePause() },
+                            modifier = Modifier.width(220.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (viewModel.isPaused.value) Color.Red else Color(0xFF00FF00)
+                                containerColor = if (isPaused) Color.Gray else Color(0xFFA0FFFF)
                             )
                         ) {
-                            Icon(
-                                if (viewModel.isPaused.value) Icons.Default.PlayArrow else Icons.Default.Close,
-                                contentDescription = null,
-                                tint = Color.Black
-                            )
-                            Text(if (viewModel.isPaused.value) " RESUME" else " PAUSE", color = Color.Black)
+                            if (isPaused) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .background(Color.Black)
+                                )
+                                Text(" Logging Stopped", color = Color.Black, fontWeight = FontWeight.Bold)
+                            } else {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .graphicsLayer(scaleX = glowScale, scaleY = glowScale)
+                                            .alpha(glowAlpha)
+                                            .background(Color.Red, CircleShape)
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .background(Color.Red, CircleShape)
+                                    )
+                                }
+                                Text(" GPS Logging...", color = Color.Black, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
