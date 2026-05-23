@@ -94,7 +94,11 @@ class SpeedViewModel(
             _tripsForDate = repository.getTripsByDate(start, end).toMutableList()
             if (_tripsForDate.isNotEmpty()) {
                 _currentHistoryTrip.value = _tripsForDate.first()
-                _historyPath.value = repository.filterPathPoints(_tripsForDate.flatMap { it.pathPoints })
+                _historyPath.value = _tripsForDate.flatMap { it.pathPoints }
+                _isLiveMode.value = false
+            } else {
+                _currentHistoryTrip.value = null
+                _historyPath.value = emptyList()
                 _isLiveMode.value = false
             }
         }
