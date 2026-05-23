@@ -1,0 +1,16 @@
+.gradle/
+build/
+composeApp/build/
+local.properties
+.DS_Store
+*.iml
+.idea/
+*.jks
+*.p12
+*.key
+*.pem
+node_modules/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal

@@ -1,0 +1,17 @@
+CREATE TABLE Trip (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER NOT NULL,
+    maxSpeed REAL NOT NULL,
+    distance REAL NOT NULL,
+    pathData TEXT NOT NULL
+);
+
+insertTrip:
+INSERT INTO Trip(timestamp, maxSpeed, distance, pathData)
+VALUES (?, ?, ?, ?);
+
+selectAllTrips:
+SELECT * FROM Trip ORDER BY timestamp DESC;
+
+selectTripsByDate:
+SELECT * FROM Trip WHERE timestamp >= ? AND timestamp < ? ORDER BY timestamp DESC;
