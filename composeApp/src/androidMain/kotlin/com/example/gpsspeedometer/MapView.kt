@@ -57,23 +57,32 @@ actual fun MapView(modifier: Modifier, state: SpeedInfo, viewModel: SpeedViewMod
         }
     }
 
-    val path = if (isLive) state.pathPoints else viewModel.historyPath.value
-
     Box(modifier = modifier) {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             uiSettings = MapUiSettings(zoomControlsEnabled = false)
         ) {
-            Polyline(
-                points = path.map { AndroidLatLng(it.latitude, it.longitude) },
-                color = if (isLive) Color.Red else Color.Cyan,
-                width = 10f
-            )
             if (isLive) {
+                Polyline(
+                    points = state.pathPoints.map { AndroidLatLng(it.latitude, it.longitude) },
+                    color = Color.Red,
+                    width = 10f
+                )
                 Marker(
                     state = MarkerState(position = currentPos),
                     title = "Current Location"
+                )
+            } else {
+                Polyline(
+                    points = viewModel.cyanPath.value.map { AndroidLatLng(it.latitude, it.longitude) },
+                    color = Color.Cyan,
+                    width = 12f
+                )
+                Polyline(
+                    points = viewModel.magentaPath.value.map { AndroidLatLng(it.latitude, it.longitude) },
+                    color = Color.Magenta,
+                    width = 6f
                 )
             }
         }

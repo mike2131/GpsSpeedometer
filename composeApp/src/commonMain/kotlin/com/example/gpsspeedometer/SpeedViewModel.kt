@@ -19,8 +19,11 @@ class SpeedViewModel(
     private val _uiState = mutableStateOf(SpeedInfo())
     val uiState: State<SpeedInfo> = _uiState
 
-    private val _historyPath = mutableStateOf<List<LatLng>>(emptyList())
-    val historyPath: State<List<LatLng>> = _historyPath
+    private val _cyanPath = mutableStateOf<List<LatLng>>(emptyList())
+    val cyanPath: State<List<LatLng>> = _cyanPath
+
+    private val _magentaPath = mutableStateOf<List<LatLng>>(emptyList())
+    val magentaPath: State<List<LatLng>> = _magentaPath
 
     private val _currentHistoryTrip = mutableStateOf<TripData?>(null)
     val currentHistoryTrip: State<TripData?> = _currentHistoryTrip
@@ -51,6 +54,7 @@ class SpeedViewModel(
                 _uiState.value.pathPoints + LatLng(
                     latitude = info.latitude, 
                     longitude = info.longitude,
+                    timeOffset = info.timeOffset,
                     accuracy = info.accuracy,
                     provider = info.provider
                 )
@@ -92,15 +96,17 @@ class SpeedViewModel(
         
         viewModelScope.launch {
             _tripsForDate = repository.getTripsByDate(start, end).toMutableList()
+            val verifyTrips = repository.getTripVerifyByDate(start, end)
+
+            _cyanPath.value = _tripsForDate.flatMap { it.pathPoints }
+            _magentaPath.value = verifyTrips.flatMap { it.pathPoints }
+
             if (_tripsForDate.isNotEmpty()) {
                 _currentHistoryTrip.value = _tripsForDate.first()
-                _historyPath.value = _tripsForDate.flatMap { it.pathPoints }
-                _isLiveMode.value = false
             } else {
                 _currentHistoryTrip.value = null
-                _historyPath.value = emptyList()
-                _isLiveMode.value = false
             }
+            _isLiveMode.value = false
         }
     }
 
