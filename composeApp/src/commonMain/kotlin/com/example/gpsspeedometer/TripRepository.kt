@@ -21,25 +21,91 @@ data class TripVerifyData(
 class TripRepository(database: AppDatabase) {
     private val queries = database.tripQueries
 
-    suspend fun saveTrip(timestamp: Long, maxSpeed: Double, distance: Double, pathPoints: List<LatLng>) = withContext(Dispatchers.Default) {
-        val legacyPathData = pathPoints.joinToString(";") { "${it.latitude},${it.longitude}" }
-        queries.insertTrip(timestamp, maxSpeed, distance, legacyPathData)
+    fun initializeDatabase() {
+        queries.createTripTable()
+        queries.createTripVerifyTable()
+        queries.createSaveLogTable()
+    }
 
-        val newPathData = pathPoints.joinToString(";") { 
-            val latEnc = Base64Int.encode((it.latitude * 1000000).toLong())
-            val lonEnc = Base64Int.encode((it.longitude * 1000000).toLong())
-            val timeEnc = Base64Int.encode(it.timeOffset)
-            val accEnc = Base64Int.encode(AccuracyLogic.compress(it.accuracy).toLong())
-            val provId = when(it.provider) {
-                "gps" -> 0L
-                "network" -> 1L
-                "fused" -> 2L
-                else -> 3L
+    fun insertManualLog(timestamp: Long, status: String, message: String) {
+        queries.insertSaveLog(timestamp, status, message)
+    }
+
+    suspend fun saveTrip(timestamp: Long, maxSpeed: Double, distance: Double, pathPoints: List<LatLng>): Long? = withContext(Dispatchers.Default) {
+        try {
+            initializeDatabase()
+            val legacyPathData = pathPoints.joinToString(";") { "${it.latitude},${it.longitude}" }
+            queries.insertTrip(timestamp, maxSpeed, distance, legacyPathData)
+            val tripId = queries.lastInsertRowId().executeAsOne()
+
+            val newPathData = pathPoints.joinToString(";") { 
+                val latEnc = Base64Int.encode((it.latitude * 1000000).toLong())
+                val lonEnc = Base64Int.encode((it.longitude * 1000000).toLong())
+                val timeEnc = Base64Int.encode(it.timeOffset)
+                val accEnc = Base64Int.encode(AccuracyLogic.compress(it.accuracy).toLong())
+                val provId = when(it.provider) {
+                    "gps" -> 0L
+                    "network" -> 1L
+                    "fused" -> 2L
+                    else -> 3L
+                }
+                val provEnc = Base64Int.encode(provId)
+                "$latEnc,$lonEnc,$timeEnc,$accEnc,$provEnc"
             }
-            val provEnc = Base64Int.encode(provId)
-            "$latEnc,$lonEnc,$timeEnc,$accEnc,$provEnc"
+            queries.insertTripVerify(timestamp, newPathData)
+            
+            queries.insertSaveLog(
+                timestamp = kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
+                status = "SUCCESS",
+                message = "Created Trip ID $tripId with ${pathPoints.size} points"
+            )
+            tripId
+        } catch (e: Exception) {
+            queries.insertSaveLog(
+                timestamp = kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
+                status = "FAILED",
+                message = "Save failed: ${e.message}"
+            )
+            null
         }
-        queries.insertTripVerify(timestamp, newPathData)
+    }
+
+    suspend fun updateTrip(tripId: Long, pathPoints: List<LatLng>) = withContext(Dispatchers.Default) {
+        try {
+            val legacyPathData = pathPoints.joinToString(";") { "${it.latitude},${it.longitude}" }
+            queries.updateTripPath(legacyPathData, tripId)
+
+            val newPathData = pathPoints.joinToString(";") { 
+                val latEnc = Base64Int.encode((it.latitude * 1000000).toLong())
+                val lonEnc = Base64Int.encode((it.longitude * 1000000).toLong())
+                val timeEnc = Base64Int.encode(it.timeOffset)
+                val accEnc = Base64Int.encode(AccuracyLogic.compress(it.accuracy).toLong())
+                val provId = when(it.provider) {
+                    "gps" -> 0L
+                    "network" -> 1L
+                    "fused" -> 2L
+                    else -> 3L
+                }
+                val provEnc = Base64Int.encode(provId)
+                "$latEnc,$lonEnc,$timeEnc,$accEnc,$provEnc"
+            }
+            // TripVerifyのIDもTripと同じであると仮定（同時挿入のため）
+            queries.updateTripVerifyPath(newPathData, tripId)
+
+            queries.insertSaveLog(
+                timestamp = kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
+                status = "UPDATE",
+                message = "Updated Trip ID $tripId to ${pathPoints.size} points"
+            )
+            true
+        } catch (e: Exception) {
+            queries.insertSaveLog(
+                timestamp = kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
+                status = "UPDATE_FAILED",
+                message = "Update failed for ID $tripId: ${e.message}"
+            )
+            false
+        }
     }
 
     suspend fun getTripsByDate(startTime: Long, endTime: Long): List<TripData> = withContext(Dispatchers.Default) {
@@ -65,6 +131,7 @@ class TripRepository(database: AppDatabase) {
     }
 
     suspend fun syncLegacyData() = withContext(Dispatchers.Default) {
+        initializeDatabase()
         val verifyCount = queries.countTripVerify().executeAsOne()
         if (verifyCount == 0L) {
             val allTrips = queries.selectAllTrips().executeAsList()

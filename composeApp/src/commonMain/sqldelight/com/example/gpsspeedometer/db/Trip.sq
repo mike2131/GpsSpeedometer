@@ -1,4 +1,5 @@
-CREATE TABLE Trip (
+createTripTable:
+CREATE TABLE IF NOT EXISTS Trip (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp INTEGER NOT NULL,
     maxSpeed REAL NOT NULL,
@@ -6,12 +7,56 @@ CREATE TABLE Trip (
     pathData TEXT NOT NULL
 );
 
+createTripVerifyTable:
+CREATE TABLE IF NOT EXISTS TripVerify (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER NOT NULL,
+    pathData TEXT NOT NULL
+);
+
+createSaveLogTable:
+CREATE TABLE IF NOT EXISTS SaveLog (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    message TEXT
+);
+
 insertTrip:
 INSERT INTO Trip(timestamp, maxSpeed, distance, pathData)
 VALUES (?, ?, ?, ?);
 
+insertTripVerify:
+INSERT INTO TripVerify(timestamp, pathData)
+VALUES (?, ?);
+
+updateTripPath:
+UPDATE Trip SET pathData = ? WHERE id = ?;
+
+updateTripVerifyPath:
+UPDATE TripVerify SET pathData = ? WHERE id = ?;
+
+lastInsertRowId:
+SELECT last_insert_rowid();
+
 selectAllTrips:
 SELECT * FROM Trip ORDER BY timestamp DESC;
 
+selectAllTripVerify:
+SELECT * FROM TripVerify ORDER BY timestamp DESC;
+
 selectTripsByDate:
 SELECT * FROM Trip WHERE timestamp >= ? AND timestamp < ? ORDER BY timestamp DESC;
+
+selectTripVerifyByDate:
+SELECT * FROM TripVerify WHERE timestamp >= ? AND timestamp < ? ORDER BY timestamp DESC;
+
+countTripVerify:
+SELECT COUNT(*) FROM TripVerify;
+
+insertSaveLog:
+INSERT INTO SaveLog(timestamp, status, message)
+VALUES (?, ?, ?);
+
+selectAllSaveLogs:
+SELECT * FROM SaveLog ORDER BY timestamp DESC;

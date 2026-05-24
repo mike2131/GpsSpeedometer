@@ -41,6 +41,7 @@ class SpeedViewModel(
 
     private var maxSpeed = 0.0
     private var startTime = 0L
+    private var currentTripId: Long? = null
 
     init {
         startTracking()
@@ -65,6 +66,18 @@ class SpeedViewModel(
             }
 
             _uiState.value = info.copy(pathPoints = currentPoints)
+
+            // Step 2.4: 自動上書き保存ロジック (100地点ごと)
+            if (!isPaused.value && currentPoints.size % 100 == 0 && currentPoints.isNotEmpty()) {
+                viewModelScope.launch {
+                    val id = currentTripId
+                    if (id != null) {
+                        repository.updateTrip(id, currentPoints)
+                    } else {
+                        currentTripId = repository.saveTrip(startTime, maxSpeed, 0.0, currentPoints)
+                    }
+                }
+            }
         }.launchIn(viewModelScope)
     }
 
@@ -85,7 +98,12 @@ class SpeedViewModel(
         if (points.size < 2) return
         
         viewModelScope.launch {
-            repository.saveTrip(startTime, maxSpeed, 0.0, points)
+            currentTripId = repository.saveTrip(startTime, maxSpeed, 0.0, points)
+            if (currentTripId != null) {
+                println("GPS Logging: Save SUCCESS (ID: $currentTripId)")
+            } else {
+                println("GPS Logging: Save FAILED")
+            }
         }
     }
 
