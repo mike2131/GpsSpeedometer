@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var repository: TripRepository
+    private lateinit var viewModel: SpeedViewModel
 
     private fun logState(state: String) {
         if (::repository.isInitialized) {
@@ -35,8 +36,20 @@ class MainActivity : ComponentActivity() {
         
         logState("onCreate")
 
+        val requestPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { _ -> }
+
+        requestPermissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+        )
+
         val locationService = AndroidLocationService(applicationContext)
-        val viewModel = SpeedViewModel(locationService, repository)
+        viewModel = SpeedViewModel(locationService, repository)
 
         lifecycleScope.launch {
             repository.syncLegacyData()
@@ -68,6 +81,9 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         logState("onPause")
+        if (::viewModel.isInitialized) {
+            viewModel.stopTracking()
+        }
     }
 
     override fun onStop() {
