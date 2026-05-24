@@ -12,12 +12,34 @@ data class TripData(
     val pathPoints: List<LatLng>
 )
 
+data class TripVerifyData(
+    val id: Long,
+    val timestamp: Long,
+    val pathPoints: List<LatLng>
+)
+
 class TripRepository(database: AppDatabase) {
     private val queries = database.tripQueries
 
     suspend fun saveTrip(timestamp: Long, maxSpeed: Double, distance: Double, pathPoints: List<LatLng>) = withContext(Dispatchers.Default) {
-        val pathData = pathPoints.joinToString(";") { "${it.latitude},${it.longitude}" }
-        queries.insertTrip(timestamp, maxSpeed, distance, pathData)
+        val legacyPathData = pathPoints.joinToString(";") { "${it.latitude},${it.longitude}" }
+        queries.insertTrip(timestamp, maxSpeed, distance, legacyPathData)
+
+        val newPathData = pathPoints.joinToString(";") { 
+            val latEnc = Base64Int.encode((it.latitude * 1000000).toLong())
+            val lonEnc = Base64Int.encode((it.longitude * 1000000).toLong())
+            val timeEnc = Base64Int.encode(it.timeOffset)
+            val accEnc = Base64Int.encode(AccuracyLogic.compress(it.accuracy).toLong())
+            val provId = when(it.provider) {
+                "gps" -> 0L
+                "network" -> 1L
+                "fused" -> 2L
+                else -> 3L
+            }
+            val provEnc = Base64Int.encode(provId)
+            "$latEnc,$lonEnc,$timeEnc,$accEnc,$provEnc"
+        }
+        queries.insertTripVerify(timestamp, newPathData)
     }
 
     suspend fun getTripsByDate(startTime: Long, endTime: Long): List<TripData> = withContext(Dispatchers.Default) {
@@ -32,11 +54,52 @@ class TripRepository(database: AppDatabase) {
         }
     }
 
+    suspend fun getTripVerifyByDate(startTime: Long, endTime: Long): List<TripVerifyData> = withContext(Dispatchers.Default) {
+        queries.selectTripVerifyByDate(startTime, endTime).executeAsList().map {
+            TripVerifyData(
+                id = it.id,
+                timestamp = it.timestamp,
+                pathPoints = parsePathData(it.pathData)
+            )
+        }
+    }
+
+    suspend fun syncLegacyData() = withContext(Dispatchers.Default) {
+        val verifyCount = queries.countTripVerify().executeAsOne()
+        if (verifyCount == 0L) {
+            val allTrips = queries.selectAllTrips().executeAsList()
+            allTrips.forEach { trip ->
+                queries.insertTripVerify(trip.timestamp, trip.pathData)
+            }
+        }
+    }
+
     private fun parsePathData(pathData: String): List<LatLng> {
         if (pathData.isEmpty()) return emptyList()
-        return pathData.split(";").map {
-            val parts = it.split(",")
-            LatLng(parts[0].toDouble(), parts[1].toDouble())
+        return pathData.split(";").mapNotNull { segment ->
+            val parts = segment.split(",")
+            when (parts.size) {
+                2 -> {
+                    LatLng(
+                        latitude = parts[0].toDoubleOrNull() ?: 0.0,
+                        longitude = parts[1].toDoubleOrNull() ?: 0.0
+                    )
+                }
+                5 -> {
+                    val lat = Base64Int.decode(parts[0]).toDouble() / 1000000.0
+                    val lon = Base64Int.decode(parts[1]).toDouble() / 1000000.0
+                    val time = Base64Int.decode(parts[2])
+                    val acc = AccuracyLogic.decompress(Base64Int.decode(parts[3]).toInt())
+                    val prov = when (Base64Int.decode(parts[4])) {
+                        0L -> "gps"
+                        1L -> "network"
+                        2L -> "fused"
+                        else -> "unknown"
+                    }
+                    LatLng(lat, lon, time, acc, prov)
+                }
+                else -> null
+            }
         }
     }
 
