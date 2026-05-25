@@ -14,6 +14,8 @@ POCO X7 (Android) 向けに最適化された、高精度・低遅延のGPSス�
 - **GPXエクスポート**: 走行ログをGPX形式で出力し、PC等へ共有。
 - **全自動スリープ防止**: アプリ使用中は、ユーザーの操作なしで常に画面消灯を防止します。
 - **速度補完**: 加速度センサーを用いた、GPSロスト時の速度推定機能。
+- **二重検証システム (Cyan/Magenta)**: 旧形式データ（シアン）と新形式Base64データ（マゼンタ）を重ねて描画し、精度の正当性を証明。
+- **SaveLog 監査**: 全てのライフサイクル遷移と保存成否をDBに永久記録。
 
 ## 使用方法
 1. アプリを起動すると位置情報の許可を求められるので「許可」します。
@@ -35,11 +37,14 @@ POCO X7 (Android) 向けに最適化された、高精度・低遅延のGPSス�
 - **MapView.kt (expect)**: プラットフォーム別の地図表示の定義。
 - **DatabaseDriverFactory.kt (expect)**: プラットフォーム別のDBドライバー定義。
 - **Trip.sq**: SQLDelightによるデータベーススキーマとクエリ定義。
+- **Base64Int.kt / AccuracyLogic.kt**: 数値をコンパクトにシリアライズ・対数圧縮する共通ツール。
+- **WBS.md**: プロジェクトの進捗・履歴管理ドキュメント。
 
 ### Android Main (Android専用実装)
-- **MainActivity.kt**: アプリ起動処理、権限要求、全自動スリープ防止（FLAG_KEEP_SCREEN_ON）の設定。
-- **AndroidLocationService.kt**: Fused Location Providerと加速度センサーによる実際の計測処理。
-- **MapView.kt (actual)**: Google Maps SDKを用いた地図表示。手動操作検知と15秒タイマーによる追従制御。
+- **MainActivity.kt**: 起動処理、権限要求、全ライフサイクル遷移のSaveLog記録、onPauseでの即時保存、全自動スリープ防止の設定。
+- **LocationHelper.kt**: センサー融合位置情報取得（シングルトン）。加速度センサーによる速度補完。
+- **LocationForegroundService.kt**: バックグラウンドでの生存を保証するフォアグラウンドサービス。
+- **MapView.kt (actual)**: Google Maps SDKを用いた地図表示。二色パス描画とインテリジェント追従制御。
 - **DatabaseDriverFactory.kt (actual)**: Android上でのSQLiteデータベース生成。
 - **ShareUtils.kt**: FileProviderを使用したGPXファイルの外部共有。
 - **AndroidManifest.xml**: 権限、サービス、APIキーの設定。

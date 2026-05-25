@@ -48,8 +48,15 @@ class MainActivity : ComponentActivity() {
             )
         )
 
-        val locationService = AndroidLocationService(applicationContext)
+        val locationService = LocationHelper
         viewModel = SpeedViewModel(locationService, repository)
+
+        val serviceIntent = android.content.Intent(this, LocationForegroundService::class.java)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
 
         lifecycleScope.launch {
             repository.syncLegacyData()

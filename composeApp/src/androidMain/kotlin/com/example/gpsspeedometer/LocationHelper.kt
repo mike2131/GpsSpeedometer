@@ -14,9 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.abs
 
-class AndroidLocationService(private val context: Context) : LocationService, SensorEventListener {
-    private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+object LocationHelper : LocationService, SensorEventListener {
+    private var fusedLocationClient: FusedLocationProviderClient? = null
+    private var sensorManager: SensorManager? = null
     
     private val _speedInfo = MutableStateFlow(SpeedInfo())
     override val speedInfo: StateFlow<SpeedInfo> = _speedInfo.asStateFlow()
@@ -25,9 +25,34 @@ class AndroidLocationService(private val context: Context) : LocationService, Se
     private var lastLocationTime = 0L
     private var startRealtime = 0L
 
-    init {
-        val accel = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
-        sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_UI)
+    @SuppressLint("MissingPermission")
+    fun start(context: Context) {
+        if (fusedLocationClient != null) return
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+        sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        
+        val accel = sensorManager?.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+        sensorManager?.registerListener(this, accel, SensorManager.SENSOR_DELAY_UI)
+
+        startRealtime = SystemClock.elapsedRealtime()
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000).build()
+        fusedLocationClient?.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+    }
+
+    fun stop() {
+        fusedLocationClient?.removeLocationUpdates(locationCallback)
+        sensorManager?.unregisterListener(this)
+        fusedLocationClient = null
+        sensorManager = null
+    }
+
+    override fun startTracking() {
+        // Now controlled by Foreground Service
+    }
+
+    override fun stopTracking() {
+        // Now controlled by Foreground Service
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -68,16 +93,5 @@ class AndroidLocationService(private val context: Context) : LocationService, Se
                 isEstimated = false
             )
         }
-    }
-
-    @SuppressLint("MissingPermission")
-    override fun startTracking() {
-        startRealtime = SystemClock.elapsedRealtime()
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000).build()
-        fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
-    }
-
-    override fun stopTracking() {
-        fusedLocationClient.removeLocationUpdates(locationCallback)
     }
 }
